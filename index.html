@@ -1,0 +1,87 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>台灣旅遊行程規劃</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>台灣旅遊行程規劃</h1>
+    
+    <div class="section">
+        <label for="city-select">選擇城市：</label>
+        <select id="city-select">
+            <option value="">請選擇城市</option>
+            <option value="taipei">台北市</option>
+            <option value="newtaipei">新北市</option>
+            <option value="taoyuan">桃園市</option>
+            <option value="taichung">台中市</option>
+            <option value="tainan">台南市</option>
+            <option value="kaohsiung">高雄市</option>
+            <option value="keelung">基隆市</option>
+            <option value="hsinchu">新竹市</option>
+            <option value="chiayi">嘉義市</option>
+            <option value="yilan">宜蘭縣</option>
+            <option value="hualien">花蓮縣</option>
+            <option value="taitung">台東縣</option>
+            <option value="penghu">澎湖縣</option>
+        </select>
+        <label for="transport-select">交通方式：</label>
+        <select id="transport-select">
+            <option value="car">汽車 (50 km/h)</option>
+            <option value="public">捷運/公車 (40 km/h)</option>
+            <option value="walk">步行 (5 km/h)</option>
+        </select>
+    </div>
+
+    <div class="section" id="attractions-section" style="display: none;">
+        <h3>選擇景點 (最多4個)</h3>
+        <div id="attractions-list" class="attractions-list"></div>
+        <button onclick="generateItinerary()">生成行程</button>
+    </div>
+
+    <div class="section" id="result"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
